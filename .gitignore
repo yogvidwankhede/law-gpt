@@ -2,3 +2,5 @@
 data/
 LawGPT_RAG.ipynb
 __pycache__/
+
+ingestion_log.json
