@@ -2,31 +2,29 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import os
 
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_pinecone import PineconeVectorStore
-from langchain_openai import ChatOpenAI
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from pinecone import Pinecone
 
-# ── Load environment ──────────────────────────────────────────────────────
 load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY   = os.getenv("OPENAI_API_KEY")
 
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+os.environ["OPENAI_API_KEY"]   = OPENAI_API_KEY
 
-# ── Build RAG pipeline (runs once at startup) ─────────────────────────────
-print("[LawGPT] Loading embeddings model...")
-embedding = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+print("[LawGPT] Loading OpenAI embeddings...")
+embedding = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    openai_api_key=OPENAI_API_KEY
 )
 
 print("[LawGPT] Connecting to Pinecone index 'lawgpt'...")
-pc = Pinecone(api_key=PINECONE_API_KEY)
+pc        = Pinecone(api_key=PINECONE_API_KEY)
 docsearch = PineconeVectorStore.from_existing_index(
     index_name="lawgpt",
     embedding=embedding,
@@ -65,18 +63,15 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 question_answer_chain = create_stuff_documents_chain(chat_model, prompt)
-rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+rag_chain             = create_retrieval_chain(retriever, question_answer_chain)
 
 print("[LawGPT] RAG pipeline ready.")
 
-# ── Flask app ─────────────────────────────────────────────────────────────
 app = Flask(__name__)
-
 
 @app.route("/")
 def index():
     return render_template("chat.html")
-
 
 @app.route("/get", methods=["POST"])
 def chat():
@@ -105,7 +100,7 @@ def chat():
 
     try:
         response = rag_chain.invoke({"input": user_msg})
-        answer = response.get("answer", "No answer returned.")
+        answer   = response.get("answer", "No answer returned.")
 
         sources = list({
             doc.metadata.get("title", "")
@@ -121,7 +116,6 @@ def chat():
             "answer": "An error occurred while processing your request. Please try again.",
             "sources": [],
         }), 500
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
