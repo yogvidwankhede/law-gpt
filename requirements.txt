@@ -8,7 +8,7 @@ langchain-pinecone==0.2.0
 langchain-core==0.3.19
 pinecone-client==4.1.2
 sentence-transformers==3.1.1
-openai==1.47.0
+openai==1.54.0
 pypdf==4.3.1
 torch==2.4.1
 transformers==4.44.2
