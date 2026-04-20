@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LawGPT</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Jost:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       TOKENS
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --bg:           #F7F3ED;
+      --bg-deep:      #EEE8DF;
+      --surface:      rgba(253, 250, 245, 0.88);
+      --surface-hard: #FDFAF5;
+      --border:       #D6CCBC;
+      --border-light: #E8E2D8;
+      --text:         #1C1610;
+      --text-2:       #5C5040;
+      --text-3:       #9C8C78;
+      --red:          #8B1F1F;
+      --red-dark:     #671717;
+      --red-muted:    rgba(139,31,31,0.09);
+      --gold:         #B8882A;
+      --gold-light:   rgba(184,136,42,0.12);
+      --user-bg:      #8B1F1F;
+      --user-text:    #FDF8F0;
+      --shadow-sm:    0 1px 6px rgba(28,22,16,0.08);
+      --shadow-md:    0 4px 20px rgba(28,22,16,0.10);
+      --shadow-lg:    0 12px 48px rgba(28,22,16,0.13);
+      --radius:       12px;
+      --sidebar-w:    56px;
+      --sidebar-open: 280px;
+      --transition:   0.28s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    body.dark {
+      --bg:           #110E0B;
+      --bg-deep:      #1A1510;
+      --surface:      rgba(26,21,16,0.92);
+      --surface-hard: #1E1913;
+      --border:       #2E2820;
+      --border-light: #241F18;
+      --text:         #EDE8E0;
+      --text-2:       #9C8C78;
+      --text-3:       #5C5040;
+      --red:          #C43333;
+      --red-dark:     #9E2828;
+      --red-muted:    rgba(196,51,51,0.10);
+      --gold:         #C49A30;
+      --gold-light:   rgba(196,154,48,0.10);
+      --user-bg:      #8B1F1F;
+      --user-text:    #FDF8F0;
+      --shadow-sm:    0 1px 6px rgba(0,0,0,0.30);
+      --shadow-md:    0 4px 20px rgba(0,0,0,0.38);
+      --shadow-lg:    0 12px 48px rgba(0,0,0,0.50);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Jost', sans-serif;
+      font-weight: 400;
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
+      /* Subtle textured grid */
+      background-image:
+        radial-gradient(ellipse 140% 70% at 70% -5%, rgba(139,31,31,0.055) 0%, transparent 55%),
+        radial-gradient(ellipse 80% 60% at 0% 100%, rgba(184,136,42,0.04) 0%, transparent 50%),
+        repeating-linear-gradient(0deg,   var(--bg-deep) 0, var(--bg-deep) 1px, transparent 1px, transparent 48px),
+        repeating-linear-gradient(90deg,  var(--bg-deep) 0, var(--bg-deep) 1px, transparent 1px, transparent 48px);
+      background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 20;
+      transition: width var(--transition), min-width var(--transition);
+    }
+    .sidebar.open {
+      width: var(--sidebar-open);
+      min-width: var(--sidebar-open);
+    }
+
+    .sidebar-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 14px 14px;
+      border-bottom: 1px solid var(--border-light);
+      flex-shrink: 0;
+    }
+    .sidebar.open .sidebar-top { padding: 18px 18px 14px; }
+
+    .sb-toggle {
+      background: none;
+      border: none;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-3);
+      border-radius: 6px;
+      flex-shrink: 0;
+      transition: color 0.2s, background 0.2s;
+    }
+    .sb-toggle:hover { color: var(--red); background: var(--red-muted); }
+    .sb-toggle svg { width: 18px; height: 18px; }
+
+    .sb-heading {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      opacity: 0;
+      max-width: 0;
+      transition: opacity 0.18s, max-width 0.28s;
+    }
+    .sidebar.open .sb-heading { opacity: 1; max-width: 200px; }
+
+    .sb-new-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 10px;
+      font-family: 'Jost', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s, color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .sidebar.open .sb-new-btn { opacity: 1; pointer-events: auto; }
+    .sb-new-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-muted); }
+
+    .sb-section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 14px 18px 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.18s;
+    }
+    .sidebar.open .sb-section-label { opacity: 1; }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 8px 16px;
+    }
+    .history-list::-webkit-scrollbar { width: 3px; }
+    .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: background 0.18s, border-color 0.18s;
+      overflow: hidden;
+      margin-bottom: 2px;
+    }
+    .history-item:hover {
+      background: var(--red-muted);
+      border-left-color: var(--red);
+    }
+    .history-item .hi-icon {
+      font-size: 13px;
+      flex-shrink: 0;
+      opacity: 0.5;
+    }
+    .history-item .hi-text {
+      font-size: 13px;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0;
+      max-width: 0;
+      transition: opacity 0.18s, max-width 0.28s;
+    }
+    .sidebar.open .history-item .hi-text { opacity: 1; max-width: 200px; }
+
+    /* sources tag in history */
+    .hi-source {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      background: var(--gold-light);
+      color: var(--gold);
+      border-radius: 4px;
+      padding: 1px 5px;
+      flex-shrink: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 80px;
+    }
+    .sidebar.open .hi-source { opacity: 1; }
+
+    /* ═══════════════════════════════════════════════════════════
+       MAIN PANEL
+    ═══════════════════════════════════════════════════════════ */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 62px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .brand { display: flex; align-items: center; gap: 13px; }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      background: var(--red);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(139,31,31,0.35);
+    }
+    .brand-mark svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 1.8; }
+
+    .brand-text { display: flex; flex-direction: column; gap: 1px; }
+    .brand-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.3px;
+    }
+    .brand-name em { color: var(--red); font-style: normal; }
+    .brand-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    /* Book pills */
+    .book-tags { display: flex; gap: 6px; }
+    .book-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+    @media (max-width: 900px) { .book-tags { display: none; } }
+
+    .mode-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .mode-btn:hover { border-color: var(--red); background: var(--red-muted); }
+
+    /* ── Disclaimer bar ── */
+    .disclaimer-bar {
+      background: var(--gold-light);
+      border-bottom: 1px solid rgba(184,136,42,0.18);
+      padding: 7px 28px;
+      font-size: 12px;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .disclaimer-bar strong { font-weight: 600; }
+
+    /* ── Chat window ── */
+    .chat-window {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 13%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      scroll-behavior: smooth;
+    }
+    .chat-window::-webkit-scrollbar { width: 4px; }
+    .chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Welcome ── */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 18px;
+      margin: auto;
+      animation: fadeUp 0.55s ease both;
+    }
+    .welcome-seal {
+      width: 72px;
+      height: 72px;
+      background: var(--surface-hard);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      box-shadow: var(--shadow-md);
+    }
+    .welcome h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .welcome h1 span { color: var(--red); }
+    .welcome p {
+      color: var(--text-2);
+      font-size: 15px;
+      line-height: 1.65;
+      max-width: 440px;
+    }
+
+    /* Book coverage cards */
+    .book-cards {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .book-card {
+      background: var(--surface-hard);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: var(--text-2);
+      text-align: left;
+      width: 190px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .book-card:hover { border-color: var(--red); box-shadow: var(--shadow-md); }
+    .book-card .bc-emoji { font-size: 18px; margin-bottom: 6px; }
+    .book-card .bc-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      margin-bottom: 3px;
+    }
+    .book-card .bc-sub { font-size: 11px; color: var(--text-3); }
+
+    /* Starter pills */
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-width: 560px;
+    }
+    .pill {
+      background: var(--surface-hard);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 7px 16px;
+      font-size: 13px;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .pill:hover { border-color: var(--red); color: var(--red); background: var(--red-muted); }
+
+    /* ── Message rows ── */
+    .msg-row {
+      display: flex;
+      gap: 13px;
+      animation: fadeUp 0.32s ease both;
+    }
+    .msg-row.user { flex-direction: row-reverse; }
+
+    .av {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 3px;
+      font-size: 17px;
+    }
+    .av.bot { background: var(--red); box-shadow: 0 2px 8px rgba(139,31,31,0.30); }
+    .av.usr { background: var(--bg-deep); border: 1px solid var(--border); }
+
+    .bubble-wrap { display: flex; flex-direction: column; gap: 5px; max-width: 75%; }
+    .msg-row.user .bubble-wrap { align-items: flex-end; }
+
+    .bubble-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 0 4px;
+    }
+
+    .bubble {
+      padding: 13px 17px;
+      border-radius: var(--radius);
+      font-size: 14.5px;
+      line-height: 1.70;
+      box-shadow: var(--shadow-sm);
+    }
+    .bubble.bot-bubble {
+      background: var(--surface-hard);
+      border: 1px solid var(--border);
+      border-top-left-radius: 3px;
+    }
+    .bubble.user-bubble {
+      background: var(--user-bg);
+      color: var(--user-text);
+      border-top-right-radius: 3px;
+    }
+
+    /* Inline formatted content */
+    .bubble strong { font-weight: 600; }
+    .bubble em { font-style: italic; color: var(--text-2); }
+    .bubble code {
+      font-family: 'DM Mono', monospace;
+      font-size: 12.5px;
+      background: var(--bg-deep);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .bubble .disclaimer-inline {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: var(--gold-light);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 6px 6px 0;
+      font-size: 12.5px;
+      color: var(--gold);
+      line-height: 1.5;
+    }
+
+    /* Source citations strip */
+    .source-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 0 2px;
+    }
+    .source-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 10.5px;
+      padding: 3px 9px;
+      background: var(--gold-light);
+      color: var(--gold);
+      border-radius: 5px;
+      border: 1px solid rgba(184,136,42,0.20);
+    }
+
+    /* Typing indicator */
+    .typing-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 4px 0;
+    }
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
+      background: var(--text-3);
+      border-radius: 50%;
+      animation: dotPulse 1.3s ease-in-out infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.18s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.36s; }
+    @keyframes dotPulse {
+      0%,80%,100% { transform: scale(0.7); opacity: 0.4; }
+      40%          { transform: scale(1);   opacity: 1;   }
+    }
+
+    /* ── Input bar ── */
+    .input-bar {
+      flex-shrink: 0;
+      padding: 16px 13%;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .input-shell {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-shell:focus-within {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(139,31,31,0.09);
+    }
+
+    .input-shell textarea {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: 'Jost', sans-serif;
+      font-size: 14.5px;
+      color: var(--text);
+      resize: none;
+      line-height: 1.55;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .input-shell textarea::placeholder { color: var(--text-3); }
+
+    .send-btn {
+      background: var(--red);
+      border: none;
+      border-radius: 8px;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      flex-shrink: 0;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(139,31,31,0.30);
+    }
+    .send-btn svg { width: 16px; height: 16px; fill: none; stroke: white; stroke-width: 2; }
+    .send-btn:hover { background: var(--red-dark); transform: scale(1.06); }
+    .send-btn:disabled { background: var(--border); box-shadow: none; cursor: not-allowed; transform: none; }
+
+    .input-hint {
+      margin-top: 8px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 10.5px;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button class="sb-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <span class="sb-heading">Case History</span>
+      <button class="sb-new-btn" onclick="clearChat()">+ New</button>
+    </div>
+    <div class="sb-section-label">Recent queries</div>
+    <div class="history-list" id="historyList"></div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════
+       MAIN PANEL
+  ══════════════════════════════════════════════ -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <!-- Scale of justice icon -->
+          <svg viewBox="0 0 24 24">
+            <line x1="12" y1="3"  x2="12" y2="20"/>
+            <path d="M6 20 H18"/>
+            <path d="M4 9 L12 6 L20 9"/>
+            <path d="M4 9 C4 9 2 13 4 15 C6 17 8 15 8 15 C8 15 10 13 8 11 Z"/>
+            <path d="M16 9 C16 9 14 13 16 15 C18 17 20 15 20 15 C20 15 22 13 20 11 Z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">Law<em>GPT</em></div>
+          <div class="brand-sub">Legal Research Assistant</div>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="book-tags">
+          <span class="book-tag">Torts</span>
+          <span class="book-tag">Copyright</span>
+          <span class="book-tag">Prof. Responsibility</span>
+        </div>
+        <button class="mode-btn" id="modeBtn" onclick="toggleMode()" title="Toggle dark mode">🌙</button>
+      </div>
+    </div>
+
+    <!-- Disclaimer bar -->
+    <div class="disclaimer-bar">
+      ⚖️ &nbsp;<strong>Legal Disclaimer:</strong>&nbsp;
+      LawGPT provides general legal information grounded in your uploaded textbooks — not legal advice. Consult a licensed attorney for your specific situation.
+    </div>
+
+    <!-- Chat window -->
+    <div class="chat-window" id="chatWindow">
+      <div class="welcome" id="welcome">
+        <div class="welcome-seal">⚖️</div>
+        <h1>Welcome to <span>LawGPT</span></h1>
+        <p>Ask any legal question. Answers are grounded in your three uploaded textbooks via the RAG pipeline.</p>
+
+        <div class="book-cards">
+          <div class="book-card">
+            <div class="bc-emoji">📚</div>
+            <div class="bc-title">Torts: Theory & Practice</div>
+            <div class="bc-sub">Little, Lidsky & Lande · 4th ed.</div>
+          </div>
+          <div class="book-card">
+            <div class="bc-emoji">©️</div>
+            <div class="bc-title">Copyright Law: Cases & Materials</div>
+            <div class="bc-sub">Fromer & Sprigman · v7.0</div>
+          </div>
+          <div class="book-card">
+            <div class="bc-emoji">🏛️</div>
+            <div class="bc-title">Professional Responsibility</div>
+            <div class="bc-sub">Capra & Green · 2nd ed.</div>
+          </div>
+        </div>
+
+        <div class="pills">
+          <div class="pill" onclick="usePill(this)">Elements of negligence?</div>
+          <div class="pill" onclick="usePill(this)">What is res ipsa loquitur?</div>
+          <div class="pill" onclick="usePill(this)">Palsgraf v. Long Island Railroad</div>
+          <div class="pill" onclick="usePill(this)">Four fair use factors</div>
+          <div class="pill" onclick="usePill(this)">Idea-expression dichotomy</div>
+          <div class="pill" onclick="usePill(this)">Lawyer confidentiality duties</div>
+          <div class="pill" onclick="usePill(this)">Contributory vs comparative negligence</div>
+          <div class="pill" onclick="usePill(this)">When can an attorney withdraw?</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input bar -->
+    <div class="input-bar">
+      <div class="input-shell">
+        <textarea
+          id="userInput"
+          rows="1"
+          placeholder="Ask a legal research question…"
+          oninput="autoResize(this)"
+          onkeydown="handleKey(event)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+    </div>
+
+  </div><!-- /main -->
+
+
+  <script>
+    /* ══════════════════════════════════════════════
+       STATE
+    ══════════════════════════════════════════════ */
+    let historyData = [];   // [{q, a, sources}]
+    let isLoading   = false;
+
+    /* ══════════════════════════════════════════════
+       UI HELPERS
+    ══════════════════════════════════════════════ */
+    function toggleMode() {
+      document.body.classList.toggle('dark');
+      document.getElementById('modeBtn').textContent =
+        document.body.classList.contains('dark') ? '☀️' : '🌙';
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    function usePill(el) {
+      const ta = document.getElementById('userInput');
+      ta.value = el.textContent;
+      autoResize(ta);
+      sendMessage();
+    }
+
+    function clearChat() {
+      historyData = [];
+      renderWelcome();
+    }
+
+    function renderWelcome() {
+      document.getElementById('chatWindow').innerHTML = `
+        <div class="welcome" id="welcome">
+          <div class="welcome-seal">⚖️</div>
+          <h1>Welcome to <span>LawGPT</span></h1>
+          <p>Ask any legal question. Answers are grounded in your three uploaded textbooks via the RAG pipeline.</p>
+          <div class="book-cards">
+            <div class="book-card"><div class="bc-emoji">📚</div><div class="bc-title">Torts: Theory & Practice</div><div class="bc-sub">Little, Lidsky & Lande · 4th ed.</div></div>
+            <div class="book-card"><div class="bc-emoji">©️</div><div class="bc-title">Copyright Law: Cases & Materials</div><div class="bc-sub">Fromer & Sprigman · v7.0</div></div>
+            <div class="book-card"><div class="bc-emoji">🏛️</div><div class="bc-title">Professional Responsibility</div><div class="bc-sub">Capra & Green · 2nd ed.</div></div>
+          </div>
+          <div class="pills">
+            <div class="pill" onclick="usePill(this)">Elements of negligence?</div>
+            <div class="pill" onclick="usePill(this)">What is res ipsa loquitur?</div>
+            <div class="pill" onclick="usePill(this)">Palsgraf v. Long Island Railroad</div>
+            <div class="pill" onclick="usePill(this)">Four fair use factors</div>
+            <div class="pill" onclick="usePill(this)">Idea-expression dichotomy</div>
+            <div class="pill" onclick="usePill(this)">Lawyer confidentiality duties</div>
+            <div class="pill" onclick="usePill(this)">Contributory vs comparative negligence</div>
+            <div class="pill" onclick="usePill(this)">When can an attorney withdraw?</div>
+          </div>
+        </div>`;
+    }
+
+    /* ══════════════════════════════════════════════
+       FORMATTING
+       Converts the markdown-ish LangChain output
+       into readable HTML. Detects the disclaimer
+       line (⚠️) and renders it as a styled callout.
+    ══════════════════════════════════════════════ */
+    function formatAnswer(text) {
+      // Split off disclaimer line if present
+      const disclaimerMatch = text.match(/(⚠️[^\n]*)/);
+      let main       = text;
+      let disclaimer = '';
+      if (disclaimerMatch) {
+        disclaimer = disclaimerMatch[1];
+        main = text.replace(disclaimer, '').trim();
+      }
+
+      // Basic markdown → HTML
+      let html = main
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g,     '<em>$1</em>')
+        .replace(/`([^`]+)`/g,     '<code>$1</code>')
+        .replace(/\n\n/g,          '<br><br>')
+        .replace(/\n/g,            '<br>');
+
+      if (disclaimer) {
+        html += `<div class="disclaimer-inline">${disclaimer}</div>`;
+      }
+      return html;
+    }
+
+    /* ══════════════════════════════════════════════
+       CHAT DOM
+    ══════════════════════════════════════════════ */
+    function removeWelcome() {
+      const w = document.getElementById('welcome');
+      if (w) w.remove();
+    }
+
+    function appendUserBubble(text) {
+      removeWelcome();
+      const win = document.getElementById('chatWindow');
+      const row = document.createElement('div');
+      row.className = 'msg-row user';
+      row.innerHTML = `
+        <div class="av usr">👤</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta">You</div>
+          <div class="bubble user-bubble">${escHtml(text)}</div>
+        </div>`;
+      win.appendChild(row);
+      scrollBottom();
+    }
+
+    function appendThinking() {
+      removeWelcome();
+      const win = document.getElementById('chatWindow');
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      row.id = 'thinkingRow';
+      row.innerHTML = `
+        <div class="av bot">⚖️</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta">LawGPT · Researching…</div>
+          <div class="bubble bot-bubble">
+            <div class="typing-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>`;
+      win.appendChild(row);
+      scrollBottom();
+    }
+
+    function removeThinking() {
+      const t = document.getElementById('thinkingRow');
+      if (t) t.remove();
+    }
+
+    function appendBotBubble(text, sources) {
+      const win = document.getElementById('chatWindow');
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+
+      // Build sources strip HTML
+      let sourcesHtml = '';
+      if (sources && sources.length > 0) {
+        const tags = sources.map(s =>
+          `<span class="source-tag">📖 ${escHtml(s)}</span>`
+        ).join('');
+        sourcesHtml = `<div class="source-strip">${tags}</div>`;
+      }
+
+      row.innerHTML = `
+        <div class="av bot">⚖️</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta">LawGPT</div>
+          <div class="bubble bot-bubble">${formatAnswer(text)}</div>
+          ${sourcesHtml}
+        </div>`;
+      win.appendChild(row);
+      scrollBottom();
+    }
+
+    function scrollBottom() {
+      const w = document.getElementById('chatWindow');
+      w.scrollTop = w.scrollHeight;
+    }
+
+    function escHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /* ══════════════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════════════ */
+    function updateSidebar() {
+      const list = document.getElementById('historyList');
+      list.innerHTML = '';
+      historyData.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'history-item';
+        el.title = item.q;
+
+        // shorten first source for badge
+        const badge = item.sources && item.sources[0]
+          ? item.sources[0].replace('Torts: Theory and Practice', 'Torts')
+                          .replace('Copyright Law: Cases and Materials', 'Copyright')
+                          .replace('Professional Responsibility', 'Prof. Resp.')
+                          .split('(')[0].trim()
+          : '';
+
+        el.innerHTML = `
+          <span class="hi-icon">⚖️</span>
+          <span class="hi-text">${escHtml(item.q.length > 36 ? item.q.slice(0, 36) + '…' : item.q)}</span>
+          ${badge ? `<span class="hi-source">${escHtml(badge)}</span>` : ''}`;
+
+        el.onclick = () => {
+          // Reload this Q&A pair
+          document.getElementById('chatWindow').innerHTML = '';
+          appendUserBubble(item.q);
+          appendBotBubble(item.a, item.sources);
+        };
+        list.appendChild(el);
+      });
+    }
+
+    /* ══════════════════════════════════════════════
+       SEND — posts to Flask /get endpoint
+       Flask should return JSON:
+         { "answer": "...", "sources": ["Title 1", ...] }
+       OR plain text (legacy HealthMate-AI compat).
+    ══════════════════════════════════════════════ */
+    async function sendMessage() {
+      if (isLoading) return;
+      const ta   = document.getElementById('userInput');
+      const text = ta.value.trim();
+      if (!text) return;
+
+      ta.value = '';
+      ta.style.height = 'auto';
+      isLoading = true;
+      document.getElementById('sendBtn').disabled = true;
+
+      appendUserBubble(text);
+      appendThinking();
+
+      try {
+        const formData = new FormData();
+        formData.append('msg', text);
+
+        const res = await fetch('/get', { method: 'POST', body: formData });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        removeThinking();
+
+        // Try JSON first (new LawGPT Flask backend)
+        // Fall back to plain text (legacy HealthMate-AI backend)
+        const contentType = res.headers.get('content-type') || '';
+        let answer, sources = [];
+
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          answer  = data.answer  || 'No answer returned.';
+          sources = data.sources || [];
+        } else {
+          answer = await res.text();
+        }
+
+        appendBotBubble(answer, sources);
+
+        historyData.unshift({ q: text, a: answer, sources });
+        updateSidebar();
+
+      } catch (err) {
+        removeThinking();
+        appendBotBubble(
+          '⚠️ Could not reach the LawGPT backend. Make sure the Flask server is running on `/get`.\n\n' +
+          `Error: ${err.message}`,
+          []
+        );
+      }
+
+      isLoading = false;
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('userInput').focus();
+    }
+
+    /* ══════════════════════════════════════════════
+       INIT
+    ══════════════════════════════════════════════ */
+    document.getElementById('userInput').addEventListener('keydown', handleKey);
+  </script>
+</body>
+</html>
