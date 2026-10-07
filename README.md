@@ -5,6 +5,12 @@ Answers are grounded in three law school textbooks via a RAG (Retrieval-Augmente
 
 ---
 
+## Screenshot
+
+![The research assistant, with its textbook library](docs/screenshots/law-gpt-dark.webp)
+
+*The research assistant, with its textbook library.*
+
 ## 📚 Textbooks Ingested
 
 | Textbook | Authors | Pages |
